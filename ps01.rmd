@@ -1,0 +1,189 @@
+---
+title: 'INFX 573: Problem Set 1 - Exploring Data'
+author: "Charudatta Deshpande"
+date: 'Due: Thursday, October 12, 2017'
+output: pdf_document
+---
+
+<!-- This syntax can be used to add comments that are ignored during knitting process. -->
+
+##### Collaborators: N/A 
+
+##### Instructions: #####
+
+Before beginning this assignment, please ensure you have access to R and RStudio. 
+
+1. Download the `problemset1.Rmd` file from Canvas. Open `problemset1.Rmd` in RStudio and supply your solutions to the assignment by editing `problemset1.Rmd`. 
+
+2. Replace the "Insert Your Name Here" text in the `author:` field with your own full name. Any collaborators must be listed on the top of your assignment. 
+
+3. Be sure to include well-documented (e.g. commented) code chucks, figures and clearly written text chunk explanations as necessary. Any figures should be clearly labeled and appropriately referenced within the text. 
+
+4. Collaboration on problem sets is acceptable, and even encouraged, but each student must turn in an individual write-up in his or her own words and his or her own work. The names of all collaborators must be listed on each assignment. Do not copy-and-paste from other students' responses or code.
+
+5. When you have completed the assignment and have **checked** that your code both runs in the Console and knits correctly when you click `Knit PDF`, rename the R Markdown file to `YourLastName_YourFirstName_ps1.Rmd`, knit a PDF and submit the PDF file on Canvas.
+
+*stress more visualization, dplyr, less questions/ethics, etc*
+
+##### Setup: #####
+
+In this problem set you will need, at minimum, the following R packages.
+
+```{r Setup, message=FALSE}
+# Load standard libraries
+library("tidyverse")
+library("nycflights13")
+```
+
+#### Problem 1: Exploring the NYC Flights Data ####
+
+In this problem set we will use the data on all flights that departed NYC (i.e. JFK, LGA or EWR) in 2013. You can find this data in the `nycflights13` R package. 
+
+##### (a) Importing and Inspecting Data: ##### 
+Load the data and describe in a short paragraph how the data was collected and what each variable represents. Perform a basic inspection of the data and discuss what you find.
+
+**Answer -**  
+
+```{r 1a Load, message=FALSE}
+# Load Data
+data(flights)
+```
+Source - This data was collected from Bureau of transportation statistics, http://www.transtats.bts.gov/DL_SelectFields.asp?Table_ID=236. This is On-time data for all flights that departed NYC (i.e. JFK, LGA or EWR) in 2013.
+
+Following fields can be found in the data - 
+
+year,month,day - Each field is part of Date of departure. 
+
+dep_time,arr_time - Actual departure and arrival times in local timezone. 
+
+sched_dep_time,sched_arr_time - Scheduled departure and arrival times in local timezone. 
+
+dep_delay,arr_delay - Departure and arrival delays, in minutes. Negative times represent early departures/arrivals.
+
+hour,minute - Time of scheduled departure broken into hour and minutes.
+
+carrier - Two letter carrier name (airline name) abbreviation.
+
+tailnum - Plane tail number. 
+
+flight - Assigned Flight number. 
+
+origin,dest - Origin and destination airport codes. 
+
+air_time - Amount of time spent in the air, in minutes. 
+
+distance - Distance between airports, in miles. 
+
+time_hour - Combination of Scheduled date and hour of the flight as a single field. 
+
+```{r 1a Inspect, message=FALSE}
+# Following commands will convert the data into data.table format, and display first
+#and last few lines of the dataset. 
+library("data.table")
+data(flights)
+as.data.table(flights)
+head(flights)
+tail(flights)
+```
+
+**Observations - **    
+1. The data appears to be sorted by year, month and day. The year is constant at value 2013.    
+2. Departure delay ranges from 1301 minutes to -43 minutes (early flight).    
+3. Total number of records is 336776. This indicates a little less than 1000 flights depart from these three airports everyday.    
+
+##### (b) Formulating Questions: ##### 
+Consider the NYC flights data. Formulate three motivating questions you want to explore using this data and explain why they are of interest. 
+
+**Answer - **    
+I find these three questions interesting for reasons specified below.    
+
+1. What is the relationship between 'carrier' (airline) and arrival delay? I find this interesting because I would like to find out if there any airlines that frequently cause delays, or if there are any airlines that are always on time.    
+
+2. Are there specific months where arrival delay is more, or less? I am interested in this because I would like to find out if delays are more during winter weather, holiday season, summer etc. And if one can choose a particular month to travel to minimize the delay.     
+
+3. Is there a relationship between time of the day the flight is scheduled to leave, and arrival delay? This is interesting since if a relationship is proven, one can take flights during a specific time of the day and experience minimum amount of delay.    
+
+##### (c) Exploring Data: ##### 
+
+For each of the questions you proposed in Problem 1b, perform an exploratory data analysis designed to address the question. At a minimum, you should produce two visualizations related to each question. Be sure to describe what the visuals show and how they speak to your question of interest. 
+
+**Answer - **   
+**1. What is the relationship between 'carrier' (airline) and arrival delay? I find this interesting because I would like to find out if there any airlines that frequently cause delays, or if there are any airlines that are always on time.**       
+
+```{r, fig.cap = "Carrier vs Mean Arrival Delay", message=FALSE, warning=FALSE}
+# Following code creates a new dataset delay which stores the carrier name and average arrival  
+#delay for each carrier. Then a scatter plot is created to visualize the results.  
+delay <- flights %>%
+		 filter(arr_delay > 0) %>%
+		 group_by(carrier) %>%
+		 summarize(mean_delay=mean(arr_delay)) %>%
+		 arrange(desc(mean_delay))
+print(delay)
+ggplot(delay, aes(carrier, mean_delay)) + geom_point()
+```
+**Comments - **        
+Above plot indicates that 'OO' (SkyWest Airlines Inc.) has the most average arrival delay at 60.6 minutes, while 'US' (US Airways Inc.) has the least amount of delay at 29 minutes. Most of the well known airlines seem to have less mean delay. This could indicate that bigger airlines are given priority helping them minimize delays.      
+
+```{r, fig.cap = "Carrier vs Arrival delay - Bar chart", message=FALSE, warning=FALSE}
+# Following code creates a bar chart of carrier and arrival delay.  
+ggplot(flights, aes(carrier, arr_delay, fill=carrier)) + geom_bar(stat="identity")
+```
+**Comments - **    
+Above plot indicates that 'OO' (SkyWest Airlines Inc.) though has the maximum arrival delay, the volume of its flights is very low compared to some others. 'UA' (United Air Lines Inc.) on the other hand seems to have a large number of flights, both late and early, thereby resulting in reduced mean delay. Same can be observed for DL, AA, US, VX etc. For 'EV'(ExpressJet Airlines Inc.), more number of flights seem delayed, thereby increasing the delay. 
+
+**Conclusion - **    
+Based on above two plots, it can be concluded that though mean delay varies from airline to airline, there isn't a pattern that can be clearly established. It is therefore concluded that choosing a specific airline does not indicate reduced possibility of delay. 
+
+**2. Are there specific months where arrival delay is more, or less? I am interested in this because I would like to find out if delays are more during winter weather, holiday season, summer etc. And if one can choose a particular month to travel to minimize the delay.**  
+
+```{r, fig.cap = "Month vs Mean Arrival Delay", message=FALSE, warning=FALSE}
+# Following code creates a new dataset delay which stores the month name and average arrival  
+#delay for each month. Then a scatter plot is created to visualize the results.  
+delay_month <- flights %>%
+		 filter(arr_delay > 0) %>%
+		 group_by(month) %>%
+		 summarize(mean_delay_month=mean(arr_delay)) %>%
+		 arrange(desc(mean_delay_month))
+print(delay_month)
+ggplot(delay_month, aes(month, mean_delay_month)) + geom_point()
+```
+**Comments - **           
+Above plot indicates that June and July are the months with highest delay, both at about 54 minutes. This would correspond to peak summer. Next in sequence are spring months, which would indicate travel congestions during spring break. The delays are the lowest in Winter months, indicating that Winter weather does not cause increase of delay time.    
+
+```{r, fig.cap = "Month vs Arrival delay - Bar chart", message=FALSE, warning=FALSE}
+# Following code creates a bar chart of month and arrival delay.  
+ggplot(flights, aes(month, arr_delay, fill=month)) + geom_bar(stat="identity")
+```
+**Comments - **    
+Above plot indicates that all months have positive and negative delays. However, in June and July, the number of flights are more than other months, and causes a higher net delay. The least number of flights occur in November and February, and the net delay is lower. December is the most popular winter month for travel, and has the highest delay among winter months.       
+
+**Conclusion - **        
+Based on above two plots, it can be concluded that a relationship exists between month of travel and arrival delay. It is possible to minimize arrival delays by choosing a specific month.     
+
+**3. Is there a relationship between time of the day the flight is scheduled to leave, and arrival delay? This is interesting since if a relationship is proven, one can take flights during a specific time of the day and experience minimum amount of delay.**  
+
+```{r, fig.cap = "Scheduled Departure Time vs Arrival delay - Part 1", message=FALSE, warning=FALSE}
+# Following code creates a plot of Scheduled Departure Time and arrival delay.  
+ggplot(flights, aes(sched_dep_time, arr_delay)) + geom_smooth(method="auto")
+```
+**Comments - **    
+Above plot indicates that the delays are the least if the flight is scheduled to leave between 12 am to 6 am. After 6 am, the delay gradually increases, with the peak at about 9 PM.   
+```{r, fig.cap = "Scheduled Departure Time vs Arrival delay - Part 2", message=FALSE, warning=FALSE}
+# Following code creates a plot of Scheduled Departure Time and arrival delay.   
+ggplot(flights, aes(sched_dep_time, arr_delay)) + geom_density2d()
+```
+**Comments - **    
+Above plot indicates almost the same fact observed by earlier visualization. If the flight is scheduled to leave between 12 am to 6 am, the delays are the least.     
+
+**Conclusion - **        
+Based on above two plots, it can be concluded that there is a relationship between scheduled departure time and arrival delay. It is possible to leave at specific times of the day and minimize delays. 
+
+##### (d) Challenge Your Results: ##### 
+
+After completing the exploratory analysis from Problem 1c, do you have any concerns about your findings?
+
+**Answer - **     
+The answers to Question # 2 and #3 are as expected. I would have expected the relationship to exist between 'month and delay' and 'time of the day and delay'. And the relationships are as I expected.    
+
+Answer to #1, relationship between airline and delay was unknown to me. I wasn't sure if it existed, and if delay is something that airlines can control. Some airlines do advertise as always being on time, but the analysis showed no relationship between an airline and arrival delay. There were variations, but there wasn't a clear pattern that could be established.    
+

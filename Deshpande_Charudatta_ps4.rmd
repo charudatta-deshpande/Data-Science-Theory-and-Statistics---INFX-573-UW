@@ -1,0 +1,335 @@
+---
+title: 'INFX 573: Problem Set 4 - Data Analysis'
+author: "Charudatta Deshpande"
+date: 'Due: Thursday, November 2, 2017'
+output: 
+  pdf_document:
+    highlight: pygments
+---
+
+### Collaborators: Manjiri Kharkar ###  
+
+### Instructions: ###
+
+
+1. Replace the "Insert Your Name Here" text in the `author:` field with your own full name. Any collaborators must be listed on the top of your assignment. 
+
+2. Be sure to include well-documented (e.g. commented) code chucks, figures and clearly written text chunk explanations as necessary. Any figures should be clearly labeled and appropriately referenced within the text. 
+
+3. Collaboration on problem sets is fun and useful!  However, you must turn in your individual write-up in his or her own words and his or her own work. The names of your collaborators must be listed on each assignment. Do not copy-and-paste from other students' responses or code.
+
+4. When you have completed the assignment and have **checked** that
+your code both runs in the Console and knits correctly, rename the R
+Markdown file to `YourLastName_YourFirstName_ps4.Rmd`, knit a PDF and
+submit both the markdown and the PDF file on Canvas.
+
+
+### The Task ###
+
+The problem set is inspired by a real-world situation and is
+deliberately somewhat vague.  Your task is to understand the data,
+convert it into a suitable format, and find the tools that produce the
+desired
+output.  Note: You are asked to produce a map but you don't have
+to use dedicated mapping tools like _ggmap_ and shapefiles, just
+ordinary plotting will do.
+
+You are working at PredicitiveAnalytics LLC.  One day your Most
+Important Customer comes to you and says: 
+
+_I need a temperature and precipitation map of Europe for January and July.
+It must be based on the most recet NOAA long term means data from
+[NOAA webpage](https://www.esrl.noaa.gov/psd/data/gridded/data.UDel_AirT_Precip.html), 
+the v401 format.  And I need it by Thursday, 
+November 2nd, 5:30pm. I just need a color map, it does not have to be anything fancy with
+borders and cities and rivers on it.  Just the temperature and rain,
+plotted in a way I can understand
+would do._
+
+Download the data and produce such maps for temperature and
+precipitation (do not use the tools on the website).  Make sure to
+explain and label your data sources and units of measurement.  Try to
+tune the plot with suitable colors, scales, etc, to impress your
+Important Customer.
+Comment, or otherwise explain your code, and briefly discuss the
+results. 
+
+Suggestions: 
+
+* If you use _ggplot_ for plotting, add coordinate
+transformation `+ coord_map()` (requires _mapproj_ library).  This ensures the map will be in a
+valid map projection.  You may experiment with different projections.
+
+# Solution:
+
+```{r}
+                           # Load Standard libraries
+library(ggplot2)
+library(mapproj)
+library(data.table)
+library(tidyverse)
+library(ncdf4)
+library(ncdf4.helpers)
+library(PCICt)
+library(maptools)
+library(viridis)
+library(chron)
+library(lattice)
+library(RColorBrewer)
+library(ggmap)
+library(rworldmap)
+library(sp)
+#
+#####################      PART 1 - Temperature plot    ######################
+#
+temperature <- nc_open("air.mon.ltm.v401.nc")
+lon <- ncvar_get(temperature, "lon")
+nlon <- dim(lon)
+#head(lon) can be used to view first few records
+lat <- ncvar_get(temperature, "lat")
+nlat <- dim(lat)
+#head(lat) can be used to view first few records
+print(c(nlon, nlat))
+time <- ncvar_get(temperature, "time")
+timeunits <- ncatt_get(temperature, "time", "units")
+ntime <- dim(time)
+#head(time) can be used to view first few records
+temp_array <- ncvar_get(temperature, "air")
+#
+                          # get global attributes
+#
+title <- ncatt_get(temperature,0,"title")
+institution <- ncatt_get(temperature,0,"institution")
+datasource <- ncatt_get(temperature,0,"source")
+references <- ncatt_get(temperature,0,"references")
+history <- ncatt_get(temperature,0,"history")
+Conventions <- ncatt_get(temperature,0,"Conventions")
+#
+#
+dlname <- ncatt_get(temperature, "air", "long_name")
+dunits <- ncatt_get(temperature, "air", "units")
+fillvalue <- ncatt_get(temperature, "air", "_FillValue")
+#
+#
+nc_close(temperature)
+#
+# split the time units string into fields
+tustr <- strsplit(timeunits$value, " ")
+tdstr <- strsplit(unlist(tustr)[3], "-")
+tmonth = as.integer(unlist(tdstr)[2])
+tday = as.integer(unlist(tdstr)[3])
+tyear = as.integer(unlist(tdstr)[1])
+chron(time, origin = c(tmonth, tday, tyear))
+#Replace NetCDF fillvalues with R NAs
+temp_array[temp_array == fillvalue$value] <- NA
+length(na.omit(as.vector(temp_array[, , 1])))
+#Get a single time slice of the data, create an R data frame
+m <- 1
+temp.slice <- temp_array[, , m]
+lonlat <- expand.grid(lon, lat)
+temp.vec <- as.vector(temp.slice)
+length(temp.vec)
+tmp.dataframe1 <- data.frame(cbind(lonlat, temp.vec))
+names(tmp.dataframe1) <- c("lon", "lat", paste("air", as.character(m), sep = "_"))
+#head(na.omit(tmp.dataframe1), 20)
+#Convert the whole array to a data frame 
+#
+temp.vec.long <- as.vector(temp_array)
+length(temp.vec.long)
+#Then reshape that vector into a 259200 by 12 matrix using the matrix() function, 
+#and verify its dimensions, which should be 259200 by 12.
+temp.mat <- matrix(temp.vec.long, nrow = nlon * nlat, ncol = ntime)
+dim(temp.mat)
+#
+#Create the second data frame from the temp.mat matrix.
+lonlat <- expand.grid(lon, lat)
+temp.dataframe2 <- data.frame(cbind(lonlat, temp.mat))
+names(temp.dataframe2) <- c("lon", "lat", "tmpJan", "tmpFeb", "tmpMar", "tmpApr", "tmpMay", 
+    "tmpJun", "tmpJul", "tmpAug", "tmpSep", "tmpOct", "tmpNov", "tmpDec")
+options(width = 110)
+#head(na.omit(temp.dataframe2, 20))
+#
+#Only keep data for January and July, since that is what we need. 
+#
+temp.dataframe3 <- temp.dataframe2 %>%
+                   select(lon, lat, tmpJan, tmpJul)
+#Remove all records with value NA. 
+temp.dataframe4 <- na.omit(temp.dataframe3)
+#head(temp.dataframe4)
+#Convert temp.dataframe4 into data.table format 
+as.data.table(temp.dataframe4)
+#
+#Only keep Europe data by calculating Europe limits and creating a new
+#data frame with those limits
+#
+europe.limits <- geocode(c("Cape Fligely, Rudolf Island, Franz Josef Land, Russia", "Gavdos, Greece", 
+                           "Faja Grande, Azores", "Severny Island, Novaya Zemlya, Russia"))
+temp.dataframe5 <- subset(temp.dataframe4, lon > min(europe.limits$lon) & lon < max(europe.limits$lon) 
+                          & lat > min(europe.limits$lat) & lat < max(europe.limits$lat))
+#
+#Now we have a dataset with latitude, longitude, January temperature and 
+#July temperature. Next, we will work on plotting it on Europe map. 
+#
+map <- get_map(location = 'Europe', zoom = 4)
+#
+#Plot 1 - January temperature on Europe map. Use scale_fill_distiller function
+#to highlight color. 
+#
+tmpJanMap <- ggmap(map) +
+    geom_tile(aes(x = lon, y = lat, fill=temp.dataframe5$tmpJan), data = temp.dataframe5, 
+              alpha = 0.7) + coord_map() + scale_fill_distiller(palette = "RdYlBu") + 
+    labs(x="Longitude", y="Latitude", fill = "January Temperature (°C)", 
+         title = "Europe January Terrestrial Air Temperature: V4.01 - Source - NOAA")
+tmpJanMap
+#
+#Plot 2 - July temperature on Europe map. Use scale_fill_distiller function
+#to highlight color. 
+#
+tmpJulMap <- ggmap(map) +
+    geom_tile(aes(x = lon, y = lat, fill=temp.dataframe5$tmpJul), data = temp.dataframe5, 
+              alpha = 0.7) + coord_map() + scale_fill_distiller(palette = "RdYlBu") + 
+    labs(x="Longitude", y="Latitude", fill = "July Temperature (°C)", 
+         title = "Europe July Terrestrial Air Temperature: V4.01 - Source - NOAA")
+tmpJulMap
+#
+#####################      PART 2 - Precipitation plot    ######################
+#
+precipitation <- nc_open("precip.mon.ltm.v401.nc")
+lon <- ncvar_get(precipitation, "lon")
+nlon <- dim(lon)
+#head(lon) can be used to view first few records
+lat <- ncvar_get(precipitation, "lat")
+nlat <- dim(lat)
+#head(lat) can be used to view first few records
+print(c(nlon, nlat))
+time <- ncvar_get(precipitation, "time")
+timeunits <- ncatt_get(precipitation, "time", "units")
+ntime <- dim(time)
+#head(time) can be used to view first few records
+precip_array <- ncvar_get(precipitation, "precip")
+#
+                          # get global attributes
+#
+title <- ncatt_get(precipitation,0,"title")
+institution <- ncatt_get(precipitation,0,"institution")
+datasource <- ncatt_get(precipitation,0,"source")
+references <- ncatt_get(precipitation,0,"references")
+history <- ncatt_get(precipitation,0,"history")
+Conventions <- ncatt_get(precipitation,0,"Conventions")
+#
+#
+dlname <- ncatt_get(precipitation, "precip", "long_name")
+dunits <- ncatt_get(precipitation, "precip", "units")
+fillvalue <- ncatt_get(precipitation, "precip", "_FillValue")
+#
+#
+nc_close(precipitation)
+#
+# split the time units string into fields
+tustr <- strsplit(timeunits$value, " ")
+tdstr <- strsplit(unlist(tustr)[3], "-")
+tmonth = as.integer(unlist(tdstr)[2])
+tday = as.integer(unlist(tdstr)[3])
+tyear = as.integer(unlist(tdstr)[1])
+chron(time, origin = c(tmonth, tday, tyear))
+#Replace NetCDF fillvalues with R NAs
+precip_array[precip_array == fillvalue$value] <- NA
+length(na.omit(as.vector(precip_array[, , 1])))
+#Get a single time slice of the data, create an R data frame
+m <- 1
+precip.slice <- precip_array[, , m]
+lonlat <- expand.grid(lon, lat)
+precip.vec <- as.vector(precip.slice)
+length(precip.vec)
+precip.dataframe1 <- data.frame(cbind(lonlat, precip.vec))
+names(precip.dataframe1) <- c("lon", "lat", paste("precip", as.character(m), sep = "_"))
+#head(na.omit(precip.dataframe1), 20)
+#Convert the whole array to a data frame 
+#
+precip.vec.long <- as.vector(precip_array)
+length(precip.vec.long)
+#Then reshape that vector into a 259200 by 12 matrix using the matrix() function, 
+#and verify its dimensions, which should be 259200 by 12.
+precip.mat <- matrix(precip.vec.long, nrow = nlon * nlat, ncol = ntime)
+dim(precip.mat)
+#
+#Create the second data frame from the precip.mat matrix.
+lonlat <- expand.grid(lon, lat)
+precip.dataframe2 <- data.frame(cbind(lonlat, precip.mat))
+names(precip.dataframe2) <- c("lon", "lat", "precipJan", "precipFeb", "precipMar", "precipApr", 
+                              "precipMay", "precipJun", "precipJul", "precipAug", "precipSep", 
+                              "precipOct", "precipNov", "precipDec")
+options(width = 110)
+#head(na.omit(precip.dataframe2, 20))
+#
+#Only keep data for January and July, since that is what we need. 
+#
+precip.dataframe3 <- precip.dataframe2 %>%
+                   select(lon, lat, precipJan, precipJul)
+#Remove all records with value NA. 
+precip.dataframe4 <- na.omit(precip.dataframe3)
+#head(precip.dataframe4)
+#Convert precip.dataframe4 into data.table format 
+as.data.table(precip.dataframe4)
+#
+#Only keep Europe data by calculating Europe limits and creating a new
+#data frame with those limits
+#
+europe.limits <- geocode(c("Cape Fligely, Rudolf Island, Franz Josef Land, Russia", "Gavdos, Greece", 
+                           "Faja Grande, Azores", "Severny Island, Novaya Zemlya, Russia"))
+precip.dataframe5 <- subset(precip.dataframe4, lon > min(europe.limits$lon) & lon < max(europe.limits$lon) 
+                            & lat > min(europe.limits$lat) & lat < max(europe.limits$lat))
+#
+#Now we have a dataset with latitude, longitude, January precipitation and 
+#July precipitation. Next, we will work on plotting it on Europe map. 
+#
+map <- get_map(location = 'Europe', zoom = 4)
+#
+#Plot 1 - January precipitation on Europe map. Use scale_fill_distiller function
+#to highlight color. 
+#
+precipJanMap <- ggmap(map) +
+    geom_tile(aes(x = lon, y = lat, fill=precip.dataframe5$precipJan), data = precip.dataframe5, 
+              alpha = 0.7) + coord_map() + scale_fill_distiller(palette = "Spectral") + 
+    labs(x="Longitude", y="Latitude", fill = "January precipitation (cm)", 
+         title = "Europe January precipitation: V4.01 - Source - NOAA")
+precipJanMap
+#
+#Plot 2 - July precipitation on Europe map. Use scale_fill_distiller function
+#to highlight color. 
+#
+precipJulMap <- ggmap(map) +
+    geom_tile(aes(x = lon, y = lat, fill=precip.dataframe5$precipJul), data = precip.dataframe5, 
+              alpha = 0.7) + coord_map() + scale_fill_distiller(palette = "Spectral") + 
+    labs(x="Longitude", y="Latitude", fill = "July precipitation (cm)", 
+         title = "Europe July precipitation: V4.01 - Source - NOAA")
+precipJulMap
+#
+```
+** Results Discussion - **     
+Source of data - NOAA webpage (https://www.esrl.noaa.gov/psd/data/gridded/data.UDel_AirT_Precip.html)        
+            
+Units of measurement -      
+Temperature - Degree Celcius      
+Precipitation - Centimeter 
+           
+Europe January Terrestrial Air Temperature -      
+The temperature varies from -20°C to more than 10°C. As expected, the southern part of Europe is warmer.     
+          
+Europe July Terrestrial Air Temperature -      
+The temperature varies from -0°C to almost 40°C. As expected, the southern part of Europe is warmer.         
+           
+Europe January Precipitation -       
+Rainfall varies from 0 to almost 40 cm. Almost all parts of Europe get similar rain this month.         
+         
+Europe July Precipitation -       
+Rainfall varies from 5 to almost 30 cm. Almost all parts of Europe get similar rain this month.        
+           
+Concerns -       
+The main concern I have is that my maps show UK, Ireland, Spain and Portugal as blank, even though they are 
+part of Europe. I tried various ways of making it work but could not. I wanted to analyze deeper but ran out 
+of time. I suspect it could be due to absence of data. I seem to be filtering the data correctly so that does 
+not appear to be the reason.    
+     
+
+

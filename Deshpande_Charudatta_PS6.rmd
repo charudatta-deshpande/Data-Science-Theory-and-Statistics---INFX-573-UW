@@ -1,0 +1,641 @@
+---
+title: 'INFX 573: Problem Set 6 - Regression'
+author: "Charudatta Deshpande"
+date: 'Due: Tuesday, November 21, 2017'
+output: pdf_document
+---
+
+# Problem Set 6
+
+## Collaborators: Charles Hemstreet, Robert Hinshaw, Manjiri Kharkar        
+
+## Instructions: 
+
+Before beginning this assignment, please ensure you have access to R and RStudio. 
+
+1. Replace the "Insert Your Name Here" text in the `author:` field
+   with your own name.  List all collaborators on the
+   top of your assignment.
+
+3. Be sure to include well-documented (e.g. commented) code chucks,
+   figures and clearly written text chunk explanations as
+   necessary. Any figures should be clearly labeled and appropriately
+   referenced within the text.
+
+4. Collaboration on problem sets is fun and useful
+   but turn in an individual write-up in your
+   own words and involving your own code.  Do not just copy-and-paste from others'
+   responses or code.
+
+5. When you have completed the assignment and have **checked** that
+   your code both runs in the Console and knits correctly when you
+   click `Knit PDF`, rename the R Markdown file to
+   `YourLastName_YourFirstName_ps6.Rmd`, knit a PDF and submit the PDF
+   file on Canvas.
+
+
+## 1. Housing Values in Suburbs of Boston
+
+In this problem we will use the Boston dataset that is available in _MASS_
+package. This dataset contains information about
+median house value for 506 neighborhoods in Boston, MA. 
+
+
+### 1.1 Describe data
+
+Describe the data and variables that are part of the _Boston_
+   dataset.  Tidy data as necessary.    
+     
+**Answer - **    
+
+```{r}
+library(MASS)
+data(Boston)
+# Use 'class' command to view the type of each column in the dataset.       
+```
+The description of Boston dataset is as follows -    
+    
+This dataframe has 506 rows and 14 columns. This is primarily meant to indicate the median values of houses in Boston. Though it has some supplemental variables like crime rate, tax rate etc.     
+
+Fields -          
+crim  - This is the per capita crime rate by town. Format - Numeric.     
+zn - This is the proportion of residential land zoned for lots over 25,000 sq.ft. Format - Numeric.    
+indus - This is the proportion of non-retail business acres per town. Format - Numeric.   
+chas - This is the Charles River dummy variable (= 1 if tract bounds river; 0 otherwise). Format - Integer.    
+nox - This is the nitrogen oxides concentration (parts per 10 million). Format - Numeric. 
+rm - This is the average number of rooms per dwelling. Format - Numeric.         
+age - This is the proportion of owner-occupied units built prior to 1940. Format - Numeric.        
+dis - This is the weighted mean of distances to five Boston employment centres. Format - Numeric.      
+rad - This is the index of accessibility to radial highways. Format - Integer.           
+tax - This is the full-value property-tax rate per \$10,000. Format - Numeric.            
+ptratio - This is the pupil-teacher ratio by town. Format - Numeric.         
+black - This is the 1000(Bk - 0:63)2 where Bk is the proportion of blacks by town. Format - Numeric.       
+lstat - This is the lower status of the population (percent). Format - Numeric.         
+medv - This is the median value of owner-occupied homes in \$1000s. Format - Numeric.        
+
+```{r}
+# Tidy the data - begin by converting it to a data.table format. 
+library(data.table)
+as.data.table(Boston)
+# 
+#After visual inspection and use of 'summary' function, no other tidying  
+#of the data is necessary. For the purpose of plots or regressions, data will 
+#be reorganized as needed.         
+```
+               
+
+### 1.2 Variable of interest
+
+Consider this data in context, what is the response variable
+of interest? Discuss how you think some of the possible predictor
+variables might be associated with this response.     
+   
+**Answer - **      
+
+The variable of interest is 'medv' which the median value of house. Without running any statistical analyses, we can discuss following possible predictor variables.    
+
+crim - Crime - House prices are expected to be higher in areas of lower crime.            
+          
+rm - Number of rooms - House prices are expected to be higher if it has more number of rooms. Without looking at the area of the house, or room sizes, establishing a relationship can be challenging.         
+       
+age - Age of the house - House prices are expected to be higher if they are newer.              
+        
+dis - weighted mean of distances to five Boston employment centres - House prices are expected to be higher if they are closer to the employment centers.          
+        
+black - Percentage of black population - Ideally this factor should not affect house prices but we will look to see if a relationship exists.                
+
+### 1.3 Simple Regression
+
+For each predictor, fit a simple linear regression model to predict
+the response. In which of the models is there a statistically
+significant association between the predictor and the response? Create
+some plots to back up your assertions.
+
+```{r}
+# Run linear regressions with above five predictor variables and variable 
+#of interest. 
+library(ggplot2)
+#
+# 1. Per capita crime rate by town vs Median House Prices
+#
+ggplot(Boston, aes(crim, medv)) + 
+labs(x="Per capita crime rate by town", y="Median house prices",  
+     title = "Per capita crime rate by town vs Median House Prices") + 
+geom_point() +
+geom_smooth(method=lm, se=FALSE)
+m1 <- lm(medv ~ crim, data=Boston)
+summary(m1)
+```
+**Answer - Per capita crime rate by town vs Median House Prices**    
+         
+The p-value is 2.2e-16, which indicates a statistically significant association. However, the Multiple R-squared value is 0.1508 which indicates that our model does a poor job at explaining the response variable. F-statistic value is 89.49 which is far greater than 1, which also indicates a statistically significant association.        
+        
+Thus we reject the null hypothesis and conclude that relationship between Per capita crime rate by town and Median House Prices is statistically significant, and we note the need for a better model.     
+
+```{r}
+#
+# 2. Number of rooms vs Median House Prices
+#
+ggplot(Boston, aes(rm, medv)) + 
+labs(x="Number of Rooms", y="Median house prices",  
+     title = "Number of Rooms vs Median House Prices") + 
+geom_point() +
+geom_smooth(method=lm, se=FALSE)
+m2 <- lm(medv ~ rm, data=Boston)
+summary(m2)
+```
+**Answer - Number of rooms vs Median House Prices**  
+         
+The p-value is 2e-16, which indicates a statistically significant association. The Multiple R-squared value is 0.4835 which indicates that our model does a decent job at explaining the response variable. F-statistic value is 471.8 which is far greater than 1, which also indicates a statistically significant association.        
+        
+Thus we reject the null hypothesis and conclude that relationship between Number of rooms and Median House Prices is statistically significant, and we note the need for a better model that would get a better Multiple R-squared value. 
+           
+```{r}
+#
+# 3. Age of the house vs Median House Prices
+#
+ggplot(Boston, aes(age, medv)) + 
+labs(x="Age of the house", y="Median house prices",  
+     title = "Age of the house vs Median House Prices") + 
+geom_point() +
+geom_smooth(method=lm, se=FALSE)
+m3 <- lm(medv ~ age, data=Boston)
+summary(m3)
+```
+**Answer - Age of the house vs Median House Prices**   
+           
+The p-value is 2e-16, which indicates a statistically significant association. The Multiple R-squared value is 0.1421 which indicates that our model does a poor job at explaining the response variable. F-statistic value is 83.48 which is far greater than 1, which also indicates a statistically significant association.        
+        
+Thus we reject the null hypothesis and conclude that relationship between Age of the house and Median House Prices is statistically significant, and we note the need for a better model that would get a better Multiple R-squared value. 
+          
+```{r}
+#
+# 4. Weighted mean of distances to five employment centres vs 
+#Median House Prices
+#
+ggplot(Boston, aes(dis, medv)) + 
+labs(x="Weighted mean of distances to five employment centres", 
+     y="Median house prices",  
+     title = "Weighted mean of distances to five employment centres vs 
+     Median House Prices") + 
+geom_point() +
+geom_smooth(method=lm, se=FALSE)
+m4 <- lm(medv ~ dis, data=Boston)
+summary(m4)
+```
+**Answer - Distances to five employment centre vs Median House Prices**  
+           
+The p-value is 1.207e-08, which indicates a statistically significant association. The Multiple R-squared value is 0.06246 which indicates that our model does a very poor job at explaining the response variable. F-statistic value is 33.58 which is greater than 1, which also indicates a statistically significant association.        
+        
+Thus we reject the null hypothesis and conclude that relationship between Weighted mean of distances to five employment centres and Median House Prices is statistically significant, and we note the need for a better model that would get a better Multiple R-squared value. 
+          
+```{r}
+#
+# 5. Percentage of black population vs Median House Prices
+#
+ggplot(Boston, aes(black, medv)) + 
+labs(x="Percentage of black population", y="Median house prices",  
+     title = "Percentage of black population vs Median House Prices") + 
+geom_point() +
+geom_smooth(method=lm, se=FALSE)
+m5 <- lm(medv ~ black, data=Boston)
+summary(m5)
+```
+**Answer - Percentage of black population vs Median House Prices** 
+          
+The p-value is 1.318e-14, which indicates a statistically significant association. The Multiple R-squared value is 0.1112 which indicates that our model does a poor job at explaining the response variable. F-statistic value is 63.05 which is greater than 1, which also indicates a statistically significant association.        
+        
+Thus we reject the null hypothesis and conclude that relationship between Percentage of black population and Median House Prices is statistically significant, and we note the need for a better model that would get a better Multiple R-squared value. 
+
+### 1.4 Multiple Regression
+
+Make sure you are familiar with multiple regression (Openintro
+Statistics, Ch 8.1-8.3).
+
+Fit a multiple regression model to predict the response using all of
+the predictors. Describe your results. For which predictors can we
+reject the null hypothesis $H_0: \beta_j = 0$?
+
+```{r}
+#
+# Fit a multiple regression model for above 5 predictor variables. 
+#
+multiple.regression <- lm(medv ~ crim + rm + age + dis + black, data=Boston)
+summary(multiple.regression)
+```
+**Answer - **       
+     
+For all 5 of above variables (crime, number of rooms, age of house, distance from employment centers and black population), the p-value is less than 0.05. This means we can reject null hypothesis for all of them, and we can conclude that all 5 variables have a statistically significant relationship with median house value. 
+          
+Though very simplistic, this is a relatively strong multiple regression model. The F-statistic value is 150.1 which is much better than 1, and Multiple R-squared value is 0.6002 which indicates that our model does a decent job at explaining the response variable which is more than 60% of the times.          
+            
+
+### 1.5 Compare Regressions
+
+How do your results from (3) compare to your results from (4)? Create
+a plot displaying the univariate regression coefficients from (3) on
+the x-axis and the multiple regression coefficients from part (4) on
+the y-axis. Use this visualization to support your response.
+
+```{r}
+#
+# Compare simple and multiple regressions
+#
+simple.coefficient <- c(m1$coefficient[2], m2$coefficient[2], m3$coefficient[2], 
+                        m4$coefficient[2], m5$coefficient[2])
+multiple.coefficient <- c(multiple.regression$coefficient[2], 
+                          multiple.regression$coefficient[3], 
+                          multiple.regression$coefficient[4], 
+                          multiple.regression$coefficient[5], 
+                          multiple.regression$coefficient[6])
+variable <- c("crim", "rm", "age", "dis", "black")
+d <- data.frame(simple.coefficient, multiple.coefficient, variable)
+ggplot(d, aes(simple.coefficient, multiple.coefficient, color=variable)) +
+  geom_point(size=2)
+d
+```
+               
+**Answer - **          
+     
+We can compare the values of the coefficients printed above and draw conclusions. For rm, age and black, the coefficients are very similar, but for dis and crim, we can see some variation in the value.    
+   
+This is due to the fact that for univariate regression, only linear relationship between the specified two variables is considered, other variables are not taken into account.    
+   
+For multivariate regression, a relationship between two variables is measured by keeping all others constant, and the process continues until all relationships are mapped. So all relationships affect each other, and the values tend to be different from univariate relationship.          
+          
+
+### 1.6 Non-linearities
+
+Is there evidence of a non-linear association between any of the
+predictors and the response? To answer this question, for each
+predictor $X$ fit a model of the form:
+
+$$ Y = \beta_0 + \beta_1 X + \beta_2 X^2 + \beta_3 X^3 + \epsilon $$
+         
+**Answer - **       
+     
+We will fit the relationships in a polynomial equation using a combination of lm() and poly function. Also, we will draw some plots with a non-linear equation to see if they are a better fit.    
+   
+We will draw following three lines/curves -     
+Blue - linear regression line       
+Red - Polynomial equation curve     
+Green - Loess line (best fitting curve)         
+           
+```{r}
+#
+# Fit the crime relationship in a polynomial equation. 
+#
+crim.fit <- lm(medv ~ poly(crim, 3), data=Boston)
+summary(crim.fit)
+ggplot(Boston, aes(crim, medv)) + 
+labs(x="Per capita crime rate by town", y="Median house prices",  
+     title = "Per capita crime rate by town vs Median House Prices") + 
+geom_point() +
+geom_smooth(method=lm, se=FALSE) + 
+geom_smooth(method = "lm", formula = y ~ poly(x, 3), color="Red", se = FALSE) + 
+geom_smooth(color="Green", se = FALSE)
+#
+# Fit the room relationship in a polynomial equation. 
+#
+rm.fit <- lm(medv ~ poly(rm, 3), data=Boston)
+summary(rm.fit)
+ggplot(Boston, aes(rm, medv)) + 
+labs(x="Number of Rooms", y="Median house prices",  
+     title = "Number of Rooms vs Median House Prices") + 
+geom_point() +
+geom_smooth(method=lm, se=FALSE) + 
+geom_smooth(method = "lm", formula = y ~ poly(x, 3), color="Red", se = FALSE) + 
+geom_smooth(color="Green", se = FALSE)
+#
+# Fit the age relationship in a polynomial equation. 
+#
+age.fit <- lm(medv ~ poly(age, 3), data=Boston)
+summary(age.fit)
+ggplot(Boston, aes(age, medv)) + 
+labs(x="Age of House", y="Median house prices",  
+     title = "Age of House vs Median House Prices") + 
+geom_point() +
+geom_smooth(method=lm, se=FALSE) + 
+geom_smooth(method = "lm", formula = y ~ poly(x, 3), color="Red", se = FALSE) + 
+geom_smooth(color="Green", se = FALSE)
+#
+# Fit the distance relationship in a polynomial equation. 
+#
+dis.fit <- lm(medv ~ poly(dis, 3), data=Boston)
+summary(dis.fit)
+ggplot(Boston, aes(dis, medv)) + 
+labs(x="Distance", y="Median house prices",  
+     title = "Distance vs Median House Prices") + 
+geom_point() +
+geom_smooth(method=lm, se=FALSE) + 
+geom_smooth(method = "lm", formula = y ~ poly(x, 3), color="Red", se = FALSE) + 
+geom_smooth(color="Green", se = FALSE)
+#
+# Fit the black population relationship in a polynomial equation. 
+#
+black.fit <- lm(medv ~ poly(black, 3), data=Boston)
+summary(black.fit)
+ggplot(Boston, aes(black, medv)) + 
+labs(x="Percentage Black population", y="Median house prices",  
+     title = "Percentage Black population vs Median House Prices") + 
+geom_point() +
+geom_smooth(method=lm, se=FALSE) + 
+geom_smooth(method = "lm", formula = y ~ poly(x, 3), color="Red", se = FALSE) + 
+geom_smooth(color="Green", se = FALSE)
+```
+        
+From this we can conclude that for all 5 predictor variables, the relationship with medv is not perfectly linear. However, for age of the house, the relationship is very close to linear.                
+          
+          
+### 1.7 Stepwise Model Selection
+
+Consider performing a stepwise model selection procedure to determine
+the best fit model (consult Openintro Statistics, 8.2.2).  Discuss
+your results. How is this model different from the model in (4)?
+        
+**Answer - **       
+      
+We will use 'Backward Elimination' strategy and start eliminating predictors from 1.4 and veryfy the results. Our original R square is 0.6002 so if we get a better value, we will adopt that model.      
+
+
+```{r}
+#
+# Original Regression
+#
+multiple.regression <- lm(medv ~ crim + rm + age + dis + black, data=Boston)
+summary(multiple.regression)
+#
+# Drop crim
+#
+multiple.regression <- lm(medv ~ rm + age + dis + black, data=Boston)
+summary(multiple.regression)
+#
+# Drop rm
+#
+multiple.regression <- lm(medv ~ crim + age + dis + black, data=Boston)
+summary(multiple.regression)
+#
+# Drop age
+#
+multiple.regression <- lm(medv ~ crim + rm + dis + black, data=Boston)
+summary(multiple.regression)
+#
+# Drop dis
+#
+multiple.regression <- lm(medv ~ crim + rm + age + black, data=Boston)
+summary(multiple.regression)
+#
+# Drop black
+#
+multiple.regression <- lm(medv ~ crim + rm + age + dis, data=Boston)
+summary(multiple.regression)
+```
+          
+As can be seen, none of the new models provide a better R square value than the original one. We can do more trial and error, and drop more than one predictors, and keep trying until we get a better value. We can also try to fit in better non-linear models to better explain the response variable. But for the purpose of this exercise, the original model from 1.4 gives us the best R square value.         
+
+### 1.8 Do Assumptions Hold?
+
+Evaluate the statistical assumptions in your regression analysis from
+(1.7) by performing a basic analysis of model residuals and any unusual
+observations (consult Openintro Statistics 7.2).  Discuss any concerns you have about your model.      
+        
+**Answer - **         
+       
+We will comment on some models we made in 1.7 with Backward Elimination method.  
+      
+Multiple R-squared values with univariate regressions -       
+crim - 0.1508        
+rm - 0.4835          
+age - 0.1421        
+dis - 0.06246        
+black - 0.1112       
+          
+Multiple R-squared values with multivariate regressions -        
+multiple regression with all 5 predictor variables included - 0.6002          
+rm + age + dis + black - 0.5797        
+crim + age + dis + black - 0.2554          
+crim + rm + dis + black - 0.5706         
+crim + rm + age + black - 0.5856      
+crim + rm + age + dis - 0.5753       
+          
+It can be observed that when 'rm' was dropped, which is the most powerful model in univariate regressions, the R square value for crim + age + dis + black dropped significantly, and that is as expected. 
+
+For all other combinations, the R square values are very similar, and do not represent any significant change. Looking at univariate values, it is acceptable and expected.      
+
+The coefficient analysis has been done in 1.5, and there is not much more to add. All coefficients vary in an acceptable range and nammer. I noted only one concern. The coeffiient of dis dropped significantly when age was excluded from the analysis. It would be interesting to investigate that reason. 
+
+Also I have one other outstanding question. With all 5 predictors included, we get an R square value of 0.6002. In univariate regressions, none of the values are that strong. It would be an interesting exercise to find out why.       
+          
+
+## 2.  Diamonds' Price
+
+Let's look at the _diamonds_ dataset from _ggplot2_ package.  Your
+task is to find which parameters influence the price of diamonds.
+
+I recommend to transform the ordered factors (such as _cut_, _clarity_) to
+unordered factors with a command like `factor(cut, ordered=FALSE)` in order to
+give more easily interpretable results.
+
+
+### 2.1 Describe the variables.
+
+What do you think, which variables are relevant in determining the
+price?  Describe your thought before you do any formal analysis.       
+     
+```{r}
+library(tidyverse)
+data(diamonds)
+as.data.table(diamonds)
+diamonds$cut = factor(diamonds$cut, ordered = FALSE)
+diamonds$color = factor(diamonds$color, ordered = FALSE)
+diamonds$clarity = factor(diamonds$clarity, ordered = FALSE)
+```
+      
+**Answer - **        
+      
+This is a data frame with 53940 rows and 10 variables with the prices and other attributes of individual diamonds.                       
+                        
+The variables are as follows:
+                       
+price - price in US dollars ($326-$18,823)          
+carat - weight of the diamond (0.2-5.01)         
+cut - quality of the cut (Fair, Good, Very Good, Premium, Ideal)         
+color - diamond colour, from J (worst) to D (best)             
+clarity - a measurement of how clear the diamond is (I1 (worst), SI2, SI1, VS2, VS1, VVS2, VVS1, IF (best))           
+x - length in mm (0-10.74)           
+y - width in mm (0-58.9)            
+z - depth in mm (0-31.8)             
+depth - total depth percentage = z /mean(x, y) = 2 * z / (x + y) (43-79)            
+table - width of top of diamond relative to widest point (43-95)          
+
+Without doing any analysis, it seems that following 4 variables will influence diamond price -    
+carat       
+cut       
+color       
+clarity.         
+          
+
+### 2.2 Multiple regression
+
+Select a number of variables you consider the most relevant.  Estimate
+a multiple regression model in the form
+
+$$ \text{price}_i = \beta_0 + \beta_1 X_{1i} + \beta_2 X_{2i} +
+\dots + \epsilon_i. $$
+
+Interpret the coefficient values.
+
+* if you are able to, give the literal interpretation of the numeric
+  value
+* if there is no easy literal interpretation, broadly explain what it
+  means, and interpret at least the sign.
+         
+```{r}
+md <- lm(price ~ carat + cut + color + clarity, data = diamonds)
+summary(md)
+```
+
+**Answer - **          
+       
+The intercept is -7362.80. Broadly speaking, when all predictor variables are zero, this is the price of the diamond. So a price of a diamond with 0 carat, no cut, no color and no clarity is -7362.80.    
+     
+There is no easy explanation as to why it is negative, and such a large value. I will try to provide a high level explanation of this.       
+     
+Coefficients in a multivariate regression indicate change in response variable, when one predictor variable is increased by 1 unit, keeping all other predictor variables at constant value. Looking at numbers, carat has a huge impact on price. Each additional carat causes a price increase of 8886.13. Similarly for clarity, 1 unit increase tends to drastically increase diamond price. Considering such a large impact on the price, when all of these are suddenly reduced to zero, the price sharply drops. So sharply that it goes well below zero and achieves a value of -7362.80.     
+     
+One way to explain it could be look at the diamond prices with lowest carat. They are at about 400 in price with a carat weight of 0.2. When carat, and everything else reduced to zero, the price sharply drops. Carat in itself causes a price reduction of about 1700, clarity causes a reduction of about 3500 and then cut and color cause further reduction. This in effect takes the intercept well below zero, at -7362.80.           
+          
+         
+### 2.3 Other specifications
+
+Select 2-3 different sets of explanatory variables or change the model
+specification in other ways, for instance by using log of the outcome
+or explanatory variables, adding interactions and squares, cubes of
+the variables, normalizing variables, or something else.
+
+Which specification gives you the highest $R^2$?  Comment your results.     
+        
+**Answer - **           
+           
+We will try multiple combinations of multivariate regressions and look at $R^2$ values.       
+
+```{r}
+#
+# Regression 1
+#
+r1 <- lm(log(price) ~ carat + cut + color + clarity, data = diamonds)
+summary(r1)
+#
+# Regression 2
+#
+r2 <- lm(price^2 ~ carat + cut + color + clarity, data = diamonds)
+summary(r2)
+#
+# Regression 3
+#
+r3 <- lm(price^0.5 ~ carat + cut + color + clarity, data = diamonds)
+summary(r3)
+#
+# Regression 4
+#
+r4 <- lm(price^0.5 ~ carat + cut + clarity, data = diamonds)
+summary(r4)
+#
+# Regression 5
+#
+r5 <- lm(price^0.5 ~ carat + color + clarity, data = diamonds)
+summary(r5)
+#
+# Regression 6
+#
+r6 <-  lm(log(price) ~ log(carat) + cut + clarity + color, data=diamonds)
+summary(r6)
+```
+       
+Looking at above results, the Regression # 6 has a $R^2$ value of 0.9826 which is the best in the attempted models.        
+       
+
+### 2.4 Visualize your best model
+
+Visualize your best and your worst model's predictions on a
+true-predicted price scatterplot.  Explain the differences.        
+     
+**Answer - **       
+      
+r2 is the worst model at $R^2$ = 0.7239, while r6 is best at $R^2$ = 0.9826. We will predict and plot these, and compare the results.    
+
+```{r}
+#predict worst model, r2
+diamonds$pred.worst <- predict(r2, diamonds)
+diamonds$pred.worst <- abs(diamonds$pred.worst)^0.5
+#predict best model, r6
+diamonds$pred.best <- predict(r6, diamonds)
+diamonds$pred.best <- exp(diamonds$pred.best)
+#Plot worst model - True vs Predicted
+ggplot(diamonds, aes(price, pred.worst)) + 
+labs(x="True Price", y="Predicted Price - Worst Model",  
+     title = "True Price vs Predicted Price - Worst Model") + 
+geom_point(size=0.1) +
+geom_abline(intercept=0, slope=1, color="Blue", size=1)
+#Plot best model - True vs Predicted
+ggplot(diamonds, aes(price, pred.best)) + 
+labs(x="True Price", y="Predicted Price - Best Model",  
+     title = "True Price vs Predicted Price - Best Model") + 
+geom_point(size=0.1) +
+geom_abline(intercept=0, slope=1, color="Blue", size=1)
+```
+     
+For a perfect model, all points will fall on the x=y line that is the blue line on the plots. However since our models are not perfect, many points fall outside of the x=y line.       
+
+Worst model -    
+      
+As can be seen, a large number of points fall outside of the x=y line. This indicates that there is a larger variance between values predicted by the model and true values. This is also reflected by the model's weaker $R^2$ value of 0.7239.   
+      
+Best Model -      
+        
+As can be seen, a large number of points fall on the x=y line. Also, there is a large number of points very close to that line. This indicates that the model is superior and provides a better match between predicted values and actual values.   
+    
+    
+### 2.5 Residuals
+
+* Show the distribution of residuals (difference between the actual and
+  predicted price).  Does it look normal?
+* Analyze a few largest outliers.  Anything special with those diamonds?
+      
+**Answer - **         
+        
+We will only comment on the best model. Because of the nature of the questions, it does not make sense to comment on the worst model. That model is weak by definition and the questions don't apply.         
+       
+We will calculate residual for best model, and plot a histogram. We will then comment on the results.     
+       
+```{r}
+#calculate residuals and plot a histogram.     
+residual <- resid(r6)
+hist(residual, breaks=150)
+m <- mean(residual)
+m
+sd <- sd(residual)
+sd
+median <- median(residual)
+median
+# place the mean on the histogram
+abline(v=mean(residual), col="darkblue", lwd=2)
+```
+        
+As can be seen, the mean is very close to 0. The distribution does look very close to normal.         
+       
+Outliers -   
+      
+From the outlier analysis, it can be seen that a diamond is more likely to be an outlier if it is an expensive one. The model calculates higher prices for diamonds with more carat and premium cut etc, but the diamond is not actually worth that much price. This could be due to any factors that our model does not consider, like table, or depth etc. It could be possible that some combinations of attributes is not attractive to buyers, so the diamonds are are worth less than the model predicts. It could be also due to a factor that customers are not willing to pay beyond a limit for certain attributes, e.g. cut or clarity once it reaches a certain amount.         
+       
+
+## 3. How much work?
+
+Tell us, roughly how many hours did you spend on this homework.     
+        
+**Answer - **   
+      
+Anticipated - 12 hours    
+     
+**Actual - 38 hours**     
+          
